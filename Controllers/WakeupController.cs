@@ -56,42 +56,33 @@ namespace KsPlc.Controllers
                     plcSendMes6.DbData = "4";
                     plcSendMes6.MessType = "TO";
                     plcSendMes6.UnitID = podid + "************";
-                    plcSendMes6.FromLocation = "1301";
-                    plcSendMes6.ToLocation = "1304";
+                    plcSendMes6.FromLocation = "1601";
+                    plcSendMes6.ToLocation = "1601";
                     plcSendMes6.CanWrite = "01";
                     plcSendMes6.UnitHigh = "0000";
                     plcSendMes6.UnitWeigh = "000000";
                     plcSendMes6.ReasonCode = "00000000";
                     PlcSendMesMapper.Insert(plcSendMes6);
                 }
-                while (isUp)
-                {
-                    if (isLow == true)
-                    {
-                        WmsTaskModel wmsTaskModel = new WmsTaskModel();
-                        wmsTaskModel.Palno = podid;
-                        wmsTaskModel.FromLocation = "DCTSJ-1";
-                        wmsTaskModel.TaskType = "04";
-                        wmsTaskModel.WmsId = $"I{DateTime.Now.Ticks % 10000000:0000000}";
-                        wmsTaskModel.IfPicking = "0";
-                        wmsTaskModel.Num = "3";
-                        WcsApiHttpService.plcAddTask(wmsTaskModel);
+                // ---- 轮询等待提升机到达高位 ----
+                int maxRetries = 30;          // 最多尝试30次
+                int retryInterval = 1000;     // 间隔1秒（毫秒）
 
-                        PlcSendMes plcSendMes6 = new PlcSendMes();
-                        plcSendMes6.PlcIp = "192.168.30.124";
-                        plcSendMes6.DbData = "4";
-                        plcSendMes6.MessType = "CL";
-                        plcSendMes6.UnitID = podid + "************";
-                        plcSendMes6.FromLocation = "1301";
-                        plcSendMes6.ToLocation = "1304";
-                        plcSendMes6.CanWrite = "01";
-                        plcSendMes6.UnitHigh = "0000";
-                        plcSendMes6.UnitWeigh = "000000";
-                        plcSendMes6.ReasonCode = "00000000";
-                        PlcSendMesMapper.Insert(plcSendMes6);
-                        break;
+                for (int i = 0; i < maxRetries; i++)
+                {
+                    System.Threading.Thread.Sleep(retryInterval); // 等待1秒
+
+                    // 重新读取实时状态
+                    isUp = plc4.GetUP_DOWN();
+                    if (isUp == true)
+                    {
+                        // 到达高位，成功
+                        return Json(ApiResponse<string>.Success("提升机到位成功"));
                     }
                 }
+
+                // 超时未到位，返回失败
+                return Json(ApiResponse<string>.Error("等待提升机到位超时"));
             }
             Console.WriteLine($"故障: {isError}, 低位: {isLow}, 高位: {isUp}");
 
