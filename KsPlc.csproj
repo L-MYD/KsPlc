@@ -227,6 +227,7 @@
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\Plc1Controller.cs" />
     <Compile Include="Controllers\Plc2Controller.cs" />
+    <Compile Include="Controllers\Plc5Controller.cs" />
     <Compile Include="Controllers\Plc4Controller.cs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Compile>

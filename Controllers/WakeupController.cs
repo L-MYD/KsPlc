@@ -76,19 +76,30 @@ namespace KsPlc.Controllers
                     isUp = plc4.GetUP_DOWN();
                     if (isUp == true)
                     {
+                        LocationInfoModel locationInfo = new LocationInfoModel();
+                        locationInfo.locationcode = "YR-T2";
+                        locationInfo.status = "occupied";
+                        locationInfo.containercode = trayNumber;
+                        LocationInfoMapper.UpdateCode(locationInfo);
+                        PLCMessageLog mes = new PLCMessageLog();
+                        mes.plcip = this.IpAddress;
+                        mes.direction = "Receive(获取到站点1601状态变为高位)";
+                        mes.messagecontent = JsonConvert.SerializeObject(data);
+                        mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
+                        PLClogMapper.InsertMessageLog(mes);
                         // 到达高位，成功
-                        return Json(ApiResponse<string>.Success("提升机到位成功"));
+                        return Json(ApiResponse<string>.Success("成功"));
                     }
                 }
 
                 // 超时未到位，返回失败
-                return Json(ApiResponse<string>.Error("等待提升机到位超时"));
+                return Json(ApiResponse<string>.Error("失败"));
             }
             Console.WriteLine($"故障: {isError}, 低位: {isLow}, 高位: {isUp}");
 
 
             // 返回 JSON 格式的成功响应
-            return Json(ApiResponse<string>.Success("成功"));
+            return Json(ApiResponse<string>.Success("失败"));
         }
     }
 }

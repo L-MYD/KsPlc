@@ -93,6 +93,13 @@ namespace KsPlc
                     slot: 1
                );
                 _plcManager.AddController(plc3);
+                // PLC5配置,发货区提升机plc ip
+                var plc5 = new Plc5Controller(
+                    ipAddress: "192.168.30.110",
+                    rack: 0,
+                    slot: 1
+               );
+                _plcManager.AddController(plc5);
                 LogService.AddSystemLog("PLC控制器配置完成", "PLC初始化",
                     $"已配置 {_plcManager.GetAllControllers().Count} 个PLC控制器", "INFO", "PLC");
 
