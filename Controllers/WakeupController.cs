@@ -64,37 +64,37 @@ namespace KsPlc.Controllers
                     plcSendMes6.UnitWeigh = "000000";
                     plcSendMes6.ReasonCode = "00000000";
                     PlcSendMesMapper.Insert(plcSendMes6);
-                }
-                // ---- 轮询等待提升机到达高位 ----
-                int maxRetries = 30;          // 最多尝试30次
-                int retryInterval = 1000;     // 间隔1秒（毫秒）
+                    // ---- 轮询等待提升机到达高位 ----
+                    int maxRetries = 30;          // 最多尝试30次
+                    int retryInterval = 1000;     // 间隔1秒（毫秒）
 
-                for (int i = 0; i < maxRetries; i++)
-                {
-                    System.Threading.Thread.Sleep(retryInterval); // 等待1秒
-
-                    // 重新读取实时状态
-                    isUp = plc4.GetUP_DOWN();
-                    if (isUp == true)
+                    for (int i = 0; i < maxRetries; i++)
                     {
-                        LocationInfoModel locationInfo = new LocationInfoModel();
-                        locationInfo.locationcode = "YR-T2";
-                        locationInfo.status = "occupied";
-                        locationInfo.containercode = podid;
-                        LocationInfoMapper.UpdateCode(locationInfo);
-                        //PLCMessageLog mes = new PLCMessageLog();
-                        //mes.plcip = "192.168.30.124";
-                        //mes.direction = "Receive(获取到站点1601状态变为高位)";
-                        //mes.messagecontent = JsonConvert.SerializeObject(mes.direction);
-                        //mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
-                        //PLClogMapper.InsertMessageLog(mes);
-                        // 到达高位，成功
-                        return Json(ApiResponse<string>.Success("成功"));
-                    }
-                }
+                        System.Threading.Thread.Sleep(retryInterval); // 等待1秒
 
-                // 超时未到位，返回失败
-                return Json(ApiResponse<string>.Error("失败"));
+                        // 重新读取实时状态
+                        isUp = plc4.GetUP_DOWN();
+                        if (isUp == true)
+                        {
+                            LocationInfoModel locationInfo = new LocationInfoModel();
+                            locationInfo.locationcode = "YR-T2";
+                            locationInfo.status = "occupied";
+                            locationInfo.containercode = podid;
+                            LocationInfoMapper.UpdateCode(locationInfo);
+                            //PLCMessageLog mes = new PLCMessageLog();
+                            //mes.plcip = "192.168.30.124";
+                            //mes.direction = "Receive(获取到站点1601状态变为高位)";
+                            //mes.messagecontent = JsonConvert.SerializeObject(mes.direction);
+                            //mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
+                            //PLClogMapper.InsertMessageLog(mes);
+                            // 到达高位，成功
+                            return Json(ApiResponse<string>.Success("成功"));
+                        }
+                    }
+
+                    // 超时未到位，返回失败
+                    return Json(ApiResponse<string>.Error("失败"));
+                }
             }
             Console.WriteLine($"故障: {isError}, 低位: {isLow}, 高位: {isUp}");
 
