@@ -256,6 +256,7 @@
     <Compile Include="Models\R.cs" />
     <Compile Include="Models\ReleaseStationModel.cs" />
     <Compile Include="Models\TaskModel.cs" />
+    <Compile Include="Models\wcs\PlcApiModel.cs" />
     <Compile Include="Models\wcs\UnBind.cs" />
     <Compile Include="Models\wcs\WmsTaskModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

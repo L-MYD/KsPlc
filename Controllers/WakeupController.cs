@@ -33,10 +33,11 @@ namespace KsPlc.Controllers
         }
 
         [System.Web.Mvc.HttpPost]
-        [System.Web.Mvc.Route("plc")]
-        public JsonResult PlcServiceApi([FromBody] string podid)
+        [System.Web.Mvc.Route("plcapi")]
+        public JsonResult PlcServiceApi([FromBody] PlcApiModel model)
         {
             string location = "1061";
+            string podid = model.PodId;
             // PLC4配置,缓存区短程提升机plc ip
             var plc4 = new Plc4Controller(
                 ipAddress: "192.168.30.124",
