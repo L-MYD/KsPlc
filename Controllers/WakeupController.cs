@@ -79,7 +79,7 @@ namespace KsPlc.Controllers
                         LocationInfoModel locationInfo = new LocationInfoModel();
                         locationInfo.locationcode = "YR-T2";
                         locationInfo.status = "occupied";
-                        locationInfo.containercode = trayNumber;
+                        locationInfo.containercode = podid;
                         LocationInfoMapper.UpdateCode(locationInfo);
                         //PLCMessageLog mes = new PLCMessageLog();
                         //mes.plcip = "192.168.30.124";
