@@ -82,7 +82,7 @@ namespace KsPlc.Controllers
                         locationInfo.containercode = trayNumber;
                         LocationInfoMapper.UpdateCode(locationInfo);
                         PLCMessageLog mes = new PLCMessageLog();
-                        mes.plcip = this.IpAddress;
+                        mes.plcip = "192.168.30.124";
                         mes.direction = "Receive(获取到站点1601状态变为高位)";
                         mes.messagecontent = JsonConvert.SerializeObject(data);
                         mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
