@@ -81,12 +81,12 @@ namespace KsPlc.Controllers
                         locationInfo.status = "occupied";
                         locationInfo.containercode = trayNumber;
                         LocationInfoMapper.UpdateCode(locationInfo);
-                        PLCMessageLog mes = new PLCMessageLog();
-                        mes.plcip = "192.168.30.124";
-                        mes.direction = "Receive(获取到站点1601状态变为高位)";
-                        mes.messagecontent = JsonConvert.SerializeObject(data);
-                        mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
-                        PLClogMapper.InsertMessageLog(mes);
+                        //PLCMessageLog mes = new PLCMessageLog();
+                        //mes.plcip = "192.168.30.124";
+                        //mes.direction = "Receive(获取到站点1601状态变为高位)";
+                        //mes.messagecontent = JsonConvert.SerializeObject(mes.direction);
+                        //mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
+                        //PLClogMapper.InsertMessageLog(mes);
                         // 到达高位，成功
                         return Json(ApiResponse<string>.Success("成功"));
                     }
