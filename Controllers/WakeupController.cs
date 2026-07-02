@@ -44,6 +44,8 @@ namespace KsPlc.Controllers
                 rack: 0,
                 slot: 1
            );
+            PlcManager _plcManager = PlcManager.Instance;
+            _plcManager.AddController(plc4);
             bool isError = plc4.GetPLC_ERROR();      // 是否故障
             bool isLow = plc4.GetLOW_DOWN();          // 是否低位状态
             bool isUp = plc4.GetUP_DOWN();            // 是否高位状态
