@@ -23,9 +23,9 @@ namespace KsPlc.Controllers
         private const int STATUS_LENGTH = 200;    // DB6长度为200字节
         // 定义要读写的位地址
         // 注意：S7.Net 的 Read(string) 支持 "DBx.DBXy.z" 格式（y=字节偏移，z=位偏移0~7）
-        private readonly string PLC_ERROR_ADDRESS = "DB0.DBX0.0";   // 提升机故障
-        private readonly string LOW_DOWN_ADDRESS  = "DB0.DBX0.1";   // 低位状态
-        private readonly string UP_DOWN_ADDRESS   = "DB0.DBX0.2";   // 高位状态
+        private readonly string PLC_ERROR_ADDRESS = "DB102.DBX0.0";   // 提升机故障
+        private readonly string LOW_DOWN_ADDRESS  = "DB102.DBX0.1";   // 低位状态
+        private readonly string UP_DOWN_ADDRESS   = "DB102.DBX0.2";   // 高位状态
 
 
         public Plc4Controller(string ipAddress, short rack = 0, short slot = 1)
