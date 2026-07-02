@@ -44,8 +44,7 @@ namespace KsPlc.Controllers
                 rack: 0,
                 slot: 1
            );
-            PlcManager _plcManager = PlcManager.Instance;
-            _plcManager.AddController(plc4);
+            plc4.Connect();
             bool isError = plc4.GetPLC_ERROR();      // 是否故障
             bool isLow = plc4.GetLOW_DOWN();          // 是否低位状态
             bool isUp = plc4.GetUP_DOWN();            // 是否高位状态
@@ -89,18 +88,19 @@ namespace KsPlc.Controllers
                             //mes.messagecontent = JsonConvert.SerializeObject(mes.direction);
                             //mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
                             //PLClogMapper.InsertMessageLog(mes);
+                            plc4.Disconnect();
                             // 到达高位，成功
                             return Json(ApiResponse<string>.Success("成功"));
                         }
                     }
-
+                    plc4.Disconnect();
                     // 超时未到位，返回失败
                     return Json(ApiResponse<string>.Error("失败"));
                 }
             }
             Console.WriteLine($"故障: {isError}, 低位: {isLow}, 高位: {isUp}");
 
-
+            plc4.Disconnect();
             // 返回 JSON 格式的成功响应
             return Json(ApiResponse<string>.Success("失败"));
         }
