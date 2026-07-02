@@ -22,12 +22,11 @@ namespace KsPlc.Controllers
         private const int DATA_LENGTH = 76;
         private const int STATUS_LENGTH = 200;    // DB6长度为200字节
         // 定义要读写的位地址
-        private const int STATUS_BIT_BLOCK = 0;      // 数据块 DB0
-        private const int STATUS_BIT_OFFSET = 0;     // 字节偏移 0
-                                                     // 位偏移（0~7）
-        private const int BIT_PLC_ERROR = 0;
-        private const int BIT_LOW_DOWN = 1;
-        private const int BIT_UP_DOWN = 2;
+        // 注意：S7.Net 的 Read(string) 支持 "DBx.DBXy.z" 格式（y=字节偏移，z=位偏移0~7）
+        private readonly string PLC_ERROR_ADDRESS = "DB0.DBX0.0";   // 提升机故障
+        private readonly string LOW_DOWN_ADDRESS  = "DB0.DBX0.1";   // 低位状态
+        private readonly string UP_DOWN_ADDRESS   = "DB0.DBX0.2";   // 高位状态
+
 
         public Plc4Controller(string ipAddress, short rack = 0, short slot = 1)
             : base("PLC4", ipAddress, rack, slot)
@@ -42,72 +41,71 @@ namespace KsPlc.Controllers
         }
 
         /// <summary>
-        /// 读取状态字节（一次性读取三个位的字节）
+        /// 读取单个位，返回 null 表示读取失败（未连接或异常）
         /// </summary>
-        private byte? ReadStatusByte()
+        private bool? ReadBit(string address)
         {
-            // 利用基类的 ReadData，它已包含连接检查和异常处理
-            byte[] data = base.ReadData(STATUS_BIT_BLOCK, STATUS_BIT_OFFSET, 1);
-            if (data != null && data.Length > 0)
+            // 1. 检查连接状态（使用基类的 _isConnected 和 _plc）
+            if (!_isConnected || _plc == null || !_plc.IsConnected)
             {
-                return data[0];
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// 从状态字节中提取指定位（可空，null表示读取失败）
-        /// </summary>
-        private bool? GetBitStatus(int bitIndex)
-        {
-            byte? statusByte = ReadStatusByte();
-            if (!statusByte.HasValue)
-            {
+                // 可选：记录 DEBUG 级别日志，避免过于频繁
+                LogService.AddSystemLog($"PLC未连接，无法读取位", "数据读取",
+                    $"PLC: {this.PlcName}, 地址: {address}", "DEBUG", this.PlcName);
                 return null;
             }
-            return (statusByte.Value & (1 << bitIndex)) != 0;
+
+            try
+            {
+                object value = _plc.Read(address);
+                if (value is bool boolValue)
+                {
+                    return boolValue;
+                }
+                else
+                {
+                    // 如果读取结果不是 bool，可能是地址格式错误，记录 WARN
+                    LogService.AddSystemLog($"读取位返回非布尔值", "数据解析",
+                        $"PLC: {this.PlcName}, 地址: {address}, 值类型: {value?.GetType().Name}", "WARN", this.PlcName);
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.AddSystemLog($"读取PLC位失败", "数据读取",
+                    $"PLC: {this.PlcName}, 地址: {address}, 错误: {ex.Message}", "WARN", this.PlcName);
+
+                // 断开连接并触发重连机制
+                base.Disconnect(); // 这会设置 _isConnected = false，触发事件，并计划重连
+                return null;
+            }
         }
 
-        /// <summary>
-        /// 获取提升机故障状态（返回 false 表示无故障或读取失败）
-        /// </summary>
         public bool GetPLC_ERROR()
         {
-            bool? result = GetBitStatus(BIT_PLC_ERROR);
+            bool? result = ReadBit(PLC_ERROR_ADDRESS);
             if (!result.HasValue)
             {
-                LogService.AddSystemLog($"读取PLC4故障位失败", "数据读取",
-                    $"PLC: {this.PlcName}, 位: 故障", "WARN", this.PlcName);
-                return false; // 读取失败时默认返回false（安全值）
-            }
-            return result.Value;
-        }
-
-        /// <summary>
-        /// 获取低位状态
-        /// </summary>
-        public bool GetLOW_DOWN()
-        {
-            bool? result = GetBitStatus(BIT_LOW_DOWN);
-            if (!result.HasValue)
-            {
-                LogService.AddSystemLog($"读取PLC4低位状态失败", "数据读取",
-                    $"PLC: {this.PlcName}, 位: 低位", "WARN", this.PlcName);
+                // 读取失败时返回 false（默认安全值），同时记录 WARN（已在 ReadBit 中记录，此处可省略）
                 return false;
             }
             return result.Value;
         }
 
-        /// <summary>
-        /// 获取高位状态
-        /// </summary>
-        public bool GetUP_DOWN()
+        public bool GetLOW_DOWN()
         {
-            bool? result = GetBitStatus(BIT_UP_DOWN);
+            bool? result = ReadBit(LOW_DOWN_ADDRESS);
             if (!result.HasValue)
             {
-                LogService.AddSystemLog($"读取PLC4高位状态失败", "数据读取",
-                    $"PLC: {this.PlcName}, 位: 高位", "WARN", this.PlcName);
+                return false;
+            }
+            return result.Value;
+        }
+
+        public bool GetUP_DOWN()
+        {
+            bool? result = ReadBit(UP_DOWN_ADDRESS);
+            if (!result.HasValue)
+            {
                 return false;
             }
             return result.Value;
