@@ -232,6 +232,8 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Compile>
     <Compile Include="Controllers\Plc3Controller.cs" />
+    <Compile Include="Controllers\Plc6Controller.cs" />
+    <Compile Include="Controllers\Plc7Controller.cs" />
     <Compile Include="Controllers\PlcControllerBase.cs" />
     <Compile Include="Controllers\WakeupController.cs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -304,6 +306,8 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
+    <Folder Include="Views\Plc6\" />
+    <Folder Include="Views\Plc7\" />
     <Folder Include="Views\PlcApi\" />
   </ItemGroup>
   <ItemGroup>

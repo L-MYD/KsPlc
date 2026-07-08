@@ -559,6 +559,37 @@ namespace KsPlc.Controllers
                             wmsTaskModel.Num = "3";
                             WcsApiHttpService.plcAddTask(wmsTaskModel);
                             break;
+                        case "1022":
+                            wmsTaskModel.FromLocation = "MJ-4";
+                            wmsTaskModel.TaskType = "04";
+                            wmsTaskModel.WmsId = $"I{DateTime.Now.Ticks % 10000000:0000000}";
+                            wmsTaskModel.IfPicking = "0";
+                            wmsTaskModel.Num = "3";
+                            WcsApiHttpService.plcAddTask(wmsTaskModel);
+                            break;
+                        case "1024":
+                            wmsTaskModel.FromLocation = "MJ-5";
+                            wmsTaskModel.TaskType = "04";
+                            wmsTaskModel.WmsId = $"I{DateTime.Now.Ticks % 10000000:0000000}";
+                            wmsTaskModel.IfPicking = "0";
+                            wmsTaskModel.Num = "3";
+                            WcsApiHttpService.plcAddTask(wmsTaskModel);
+                            break;
+                        case "1002":
+                            WriterYR("1002", "YR-1");
+                            break;
+                        case "1006":
+                            WriterYR("1006", "YR-2");
+                            break;
+                        case "1008":
+                            WriterYR("1008", "YR-3");
+                            break;
+                        case "1010":
+                            WriterYR("1010", "YR-4");
+                            break;
+                        case "1012":
+                            WriterYR("1012", "YR-5");
+                            break;
                         default:
                             break;
                     }
@@ -670,6 +701,40 @@ namespace KsPlc.Controllers
         {
             StopStatusPolling();
             base.Dispose();
+        }
+
+        public new void WriterYR(string location,string sitecode)
+        {
+            PlcSendMes plcSendMes6 = new PlcSendMes();
+            plcSendMes6.PlcIp = "192.168.30.85";
+            plcSendMes6.DbData = "100";
+            plcSendMes6.MessType = "CL";
+            plcSendMes6.UnitID = "**********************";
+            plcSendMes6.FromLocation = location;
+            plcSendMes6.ToLocation = location;
+            plcSendMes6.CanWrite = "01";
+            plcSendMes6.UnitHigh = "0000";
+            plcSendMes6.UnitWeigh = "000000";
+            plcSendMes6.ReasonCode = "00000000";
+            PlcSendMesMapper.Insert(plcSendMes6);
+            LocationInfoModel la = LocationInfoMapper.FindByLocationcode(sitecode);
+            if (la == null) return;
+
+            // 只有点位不是 available 状态时，才需要尝试清除（避免重复清除 available 点位）
+            if (la.status != "available")
+            {
+                // 原子操作：如果没有进行中的任务，则清除点位（状态设为 available，容器号清空）
+                int affected = LocationInfoMapper.ClearIfNoTasks(sitecode, la.lanenumber);
+                if (affected > 0)
+                {
+                    // 清除成功，执行解绑
+                    UnBind unBind = new UnBind();
+                    unBind.carrierCode = la.containercode;
+                    unBind.siteCode = sitecode;
+                    WcsApiHttpService.UnBindRcsSation(unBind);
+                }
+                // 如果 affected == 0，说明有进行中的任务，不清除也不解绑
+            }
         }
     }
 }

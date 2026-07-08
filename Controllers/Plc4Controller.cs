@@ -525,8 +525,8 @@ namespace KsPlc.Controllers
             }
             catch (Exception ex)
             {
-                LogService.AddSystemLog($"PLC2写入字符串到PLC失败", "PLC通信",
-                    $"异常: {ex.Message}, DB{dbBlock}.DBB{startAddress}, 值: {value}", "ERROR", "PLC2");
+                LogService.AddSystemLog($"PLC4写入字符串到PLC失败", "PLC通信",
+                    $"异常: {ex.Message}, DB{dbBlock}.DBB{startAddress}, 值: {value}", "ERROR", "PLC4");
                 return false;
             }
 

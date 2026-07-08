@@ -20,7 +20,7 @@ namespace KsPlc.Controllers
         private const int STATUS_BLOCK = 6;      // 状态数据块DB6
         private const int START_ADDRESS = 0;
         private const int DATA_LENGTH = 76;
-        private const int STATUS_LENGTH = 200;    // DB6长度为200字节
+        private const int STATUS_LENGTH = 138;    // DB6长度为138字节
 
         public Plc5Controller(string ipAddress, short rack = 0, short slot = 1)
             : base("PLC5", ipAddress, rack, slot)
@@ -155,25 +155,19 @@ namespace KsPlc.Controllers
             try
             {
                
-                var Sation_Status1 = rawData.Skip(4).Take(38).ToList();    // 0-39
-                var Sation_Status2 = rawData.Skip(44).Take(38).ToList();   // 40-79
-                var Sation_Status3 = rawData.Skip(84).Take(38).ToList();   // 80-119
-                var Sation_Status4 = rawData.Skip(124).Take(38).ToList();  // 120-159
-                var Sation_Status5 = rawData.Skip(164).Take(36).ToList();  // 160-199
+                var Sation_Status1 = rawData.Skip(4).Take(38).ToList();    // 4-42
+                var Sation_Status2 = rawData.Skip(44).Take(38).ToList();   // 44-82
+                var Sation_Status3 = rawData.Skip(84).Take(38).ToList();   // 84-122
 
                 var SationStatus1 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status1));
                 var SationStatus2 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status2));
                 var SationStatus3 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status3));
-                var SationStatus4 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status4));
-                var SationStatus5 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status5));
 
                 return new
                 {
                     SationStatus1,
                     SationStatus2,
                     SationStatus3,
-                    SationStatus4,
-                    SationStatus5,
                     Timestamp = DateTime.Now,
                     DataBlock = STATUS_BLOCK,
                     SourceIP = this.IpAddress,
@@ -251,7 +245,7 @@ namespace KsPlc.Controllers
 
                     // 处理每个站点的状态
                     //LogService.AddSystemLog($"PLC5 DB6站点状态", "状态监控",
-                    //    $"站点1: {data.SationStatus1}, 站点2: {data.SationStatus2}, 站点3: {data.SationStatus3}, 站点4: {data.SationStatus4}, 站点5: {data.SationStatus5}",
+                    //    $"站点1: {data.SationStatus1}, 站点2: {data.SationStatus2}, 站点3: {data.SationStatus3}, 站点4: {data.SationStatus4}, 站点5: {data.SationStatus3}",
                     //    "INFO", this.PlcName);
 
                     // 检查站点状态
@@ -315,11 +309,11 @@ namespace KsPlc.Controllers
                 //}
 
                 //站点2状态检查  1201需要----FH-T1
-                if (!string.IsNullOrEmpty(data.SationStatus2))
+                if (!string.IsNullOrEmpty(data.SationStatus1))
                 {
-                    string SationCode = data.SationStatus2.Substring(0, 4);
-                    string SationStatus = data.SationStatus2.Substring(6, 2);
-                    string trayNumber = data.SationStatus2.Substring(8, 8);
+                    string SationCode = data.SationStatus1.Substring(0, 4);
+                    string SationStatus = data.SationStatus1.Substring(6, 2);
+                    string trayNumber = data.SationStatus1.Substring(8, 8);
                     if (SationCode.Equals("1201"))
                     {
                         if (SationStatus.Equals("10")) // 站点为空
@@ -358,12 +352,12 @@ namespace KsPlc.Controllers
 
                 //}
 
-                //站点5状态检查   1203-- - JX - T2
-                if (!string.IsNullOrEmpty(data.SationStatus5))
+                //站点5状态检查   1203-- - FH-T2
+                if (!string.IsNullOrEmpty(data.SationStatus3))
                 {
-                    string SationCode = data.SationStatus5.Substring(0, 4);
-                    string SationStatus = data.SationStatus5.Substring(6, 2);
-                    string trayNumber = data.SationStatus5.Substring(8, 8);
+                    string SationCode = data.SationStatus3.Substring(0, 4);
+                    string SationStatus = data.SationStatus3.Substring(6, 2);
+                    string trayNumber = data.SationStatus3.Substring(8, 8);
                     if (SationCode.Equals("1203"))
                     {
                         LocationInfoModel la2 = LocationInfoMapper.FindByLocationcode("FH-T2");
@@ -448,8 +442,8 @@ namespace KsPlc.Controllers
             }
             catch (Exception ex)
             {
-                LogService.AddSystemLog($"PLC2写入字符串到PLC失败", "PLC通信",
-                    $"异常: {ex.Message}, DB{dbBlock}.DBB{startAddress}, 值: {value}", "ERROR", "PLC2");
+                LogService.AddSystemLog($"PLC5写入字符串到PLC失败", "PLC通信",
+                    $"异常: {ex.Message}, DB{dbBlock}.DBB{startAddress}, 值: {value}", "ERROR", "PLC5");
                 return false;
             }
 
