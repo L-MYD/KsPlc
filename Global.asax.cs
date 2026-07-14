@@ -101,19 +101,19 @@ namespace KsPlc
                );
                 _plcManager.AddController(plc5);
                 // PLC6配置,内销平库区牙叉式提升机plc ip
-                var plc6 = new Plc5Controller(
+                var plc6 = new Plc6Controller(
                     ipAddress: "192.168.30.102",
                     rack: 0,
                     slot: 1
                );
-                _plcManager.AddController(plc5);
-                // PLC7配置,内销平库区入库提升机plc ip
-                var plc7 = new Plc5Controller(
-                    ipAddress: "192.168.30.122",
-                    rack: 0,
-                    slot: 1
-               );
-                _plcManager.AddController(plc5);
+                _plcManager.AddController(plc6);
+               // // PLC7配置,内销平库区入库提升机plc ip
+               // var plc7 = new Plc7Controller(
+               //     ipAddress: "192.168.30.122",
+               //     rack: 0,
+               //     slot: 1
+               //);
+               // _plcManager.AddController(plc7);
                 LogService.AddSystemLog("PLC控制器配置完成", "PLC初始化",
                     $"已配置 {_plcManager.GetAllControllers().Count} 个PLC控制器", "INFO", "PLC");
 

@@ -261,11 +261,11 @@ namespace KsPlc.Controllers
         {
             try
             {
-                if (!string.IsNullOrEmpty(data.SationStatus3))
+                if (!string.IsNullOrEmpty(data.SationStatus2))
                 {
-                    string SationCode = data.SationStatus3.Substring(0, 4);
-                    string SationStatus = data.SationStatus3.Substring(6, 2);
-                    string trayNumber = data.SationStatus3.Substring(8, 8);
+                    string SationCode = data.SationStatus2.Substring(0, 4);
+                    string SationStatus = data.SationStatus2.Substring(6, 2);
+                    string trayNumber = data.SationStatus2.Substring(8, 8);
                     if (SationCode.Equals("1102"))
                     {
                         LocationInfoModel la2 = LocationInfoMapper.FindByLocationcode("DB-T2");

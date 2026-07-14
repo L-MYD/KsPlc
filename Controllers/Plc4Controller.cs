@@ -9,7 +9,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
 
 namespace KsPlc.Controllers
 {
@@ -20,12 +19,12 @@ namespace KsPlc.Controllers
         private const int STATUS_BLOCK = 6;      // 状态数据块DB6
         private const int START_ADDRESS = 0;
         private const int DATA_LENGTH = 76;
-        private const int STATUS_LENGTH = 200;    // DB6长度为200字节
+        private const int STATUS_LENGTH = 90;    // DB6长度为200字节
         // 定义要读写的位地址
         // 注意：S7.Net 的 Read(string) 支持 "DBx.DBXy.z" 格式（y=字节偏移，z=位偏移0~7）
         private readonly string PLC_ERROR_ADDRESS = "DB102.DBX0.0";   // 提升机故障
-        private readonly string LOW_DOWN_ADDRESS  = "DB102.DBX0.1";   // 低位状态
-        private readonly string UP_DOWN_ADDRESS   = "DB102.DBX0.2";   // 高位状态
+        private readonly string LOW_DOWN_ADDRESS = "DB102.DBX0.1";   // 低位状态
+        private readonly string UP_DOWN_ADDRESS = "DB102.DBX0.2";   // 高位状态
 
 
         public Plc4Controller(string ipAddress, short rack = 0, short slot = 1)
@@ -231,26 +230,17 @@ namespace KsPlc.Controllers
 
             try
             {
-               
+
                 var Sation_Status1 = rawData.Skip(4).Take(38).ToList();    // 0-39
                 var Sation_Status2 = rawData.Skip(44).Take(38).ToList();   // 40-79
-                var Sation_Status3 = rawData.Skip(84).Take(38).ToList();   // 80-119
-                var Sation_Status4 = rawData.Skip(124).Take(38).ToList();  // 120-159
-                var Sation_Status5 = rawData.Skip(164).Take(36).ToList();  // 160-199
 
                 var SationStatus1 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status1));
                 var SationStatus2 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status2));
-                var SationStatus3 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status3));
-                var SationStatus4 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status4));
-                var SationStatus5 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status5));
 
                 return new
                 {
                     SationStatus1,
                     SationStatus2,
-                    SationStatus3,
-                    SationStatus4,
-                    SationStatus5,
                     Timestamp = DateTime.Now,
                     DataBlock = STATUS_BLOCK,
                     SourceIP = this.IpAddress,
@@ -287,9 +277,9 @@ namespace KsPlc.Controllers
             //    // 如果是MR消息类型
             //    if (data.MessType != null && data.MessType.Equals("MR"))
             //    {
-                 
+
             //        string unitId = data.UnitID; // 获取托盘号
-                    
+
             //        if (data.FromLocation.Equals("1301")) {
             //            LocationInfoModel locationInfo = new LocationInfoModel();
             //            locationInfo.locationcode = "MJ_T1";
@@ -392,36 +382,36 @@ namespace KsPlc.Controllers
                 //}
 
                 //站点2状态检查  1301需要----MJ_T1
-                if (!string.IsNullOrEmpty(data.SationStatus2))
-                {
-                    string SationCode = data.SationStatus2.Substring(0, 4);
-                    string SationStatus = data.SationStatus2.Substring(6, 2);
-                    string trayNumber = data.SationStatus2.Substring(8, 8);
-                    if (SationCode.Equals("1301"))
-                    {
-                        if (SationStatus.Equals("10")) // 站点为空
-                        {
-                            LocationInfoModel la = LocationInfoMapper.FindByLocationcode("MJ_T1");
-                            if (la == null) return;
+                //if (!string.IsNullOrEmpty(data.SationStatus2))
+                //{
+                //    string SationCode = data.SationStatus2.Substring(0, 4);
+                //    string SationStatus = data.SationStatus2.Substring(6, 2);
+                //    string trayNumber = data.SationStatus2.Substring(8, 8);
+                //    if (SationCode.Equals("1301"))
+                //    {
+                //        if (SationStatus.Equals("10")) // 站点为空
+                //        {
+                //            LocationInfoModel la = LocationInfoMapper.FindByLocationcode("MJ_T1");
+                //            if (la == null) return;
 
-                            // 只有点位不是 available 状态时，才需要尝试清除（避免重复清除 available 点位）
-                            if (la.status != "available")
-                            {
-                                // 原子操作：如果没有进行中的任务，则清除点位（状态设为 available，容器号清空）
-                                int affected = LocationInfoMapper.ClearIfNoTasks("MJ_T1", la.lanenumber);
-                                if (affected > 0)
-                                {
-                                    // 清除成功，执行解绑
-                                    UnBind unBind = new UnBind();
-                                    unBind.carrierCode = la.containercode;
-                                    unBind.siteCode = "MJ_T1";
-                                    WcsApiHttpService.UnBindRcsSation(unBind);
-                                }
-                                // 如果 affected == 0，说明有进行中的任务，不清除也不解绑
-                            }
-                        }
-                    }
-                }
+                //            // 只有点位不是 available 状态时，才需要尝试清除（避免重复清除 available 点位）
+                //            if (la.status != "available")
+                //            {
+                //                // 原子操作：如果没有进行中的任务，则清除点位（状态设为 available，容器号清空）
+                //                int affected = LocationInfoMapper.ClearIfNoTasks("MJ_T1", la.lanenumber);
+                //                if (affected > 0)
+                //                {
+                //                    // 清除成功，执行解绑
+                //                    UnBind unBind = new UnBind();
+                //                    unBind.carrierCode = la.containercode;
+                //                    unBind.siteCode = "MJ_T1";
+                //                    WcsApiHttpService.UnBindRcsSation(unBind);
+                //                }
+                //                // 如果 affected == 0，说明有进行中的任务，不清除也不解绑
+                //            }
+                //        }
+                //    }
+                //}
 
                 //// 站点3状态检查   1302不用
                 //if (!string.IsNullOrEmpty(data.SationStatus3))
@@ -436,55 +426,55 @@ namespace KsPlc.Controllers
                 //}
 
                 //站点5状态检查   1304-- - JX - T2
-                if (!string.IsNullOrEmpty(data.SationStatus5))
-                {
-                    string SationCode = data.SationStatus5.Substring(0, 4);
-                    string SationStatus = data.SationStatus5.Substring(6, 2);
-                    string trayNumber = data.SationStatus5.Substring(8, 8);
-                    if (SationCode.Equals("1304"))
-                    {
-                        LocationInfoModel la2 = LocationInfoMapper.FindByLocationcode("JX-T2");
-                        if (SationStatus.Equals("01"))
-                        {//代表此站点有货
-                          
-                            if (la2 == null) return;
-                            if (la2.status != "occupied")
-                            {
-                                LocationInfoModel locationInfo = new LocationInfoModel();
-                                locationInfo.locationcode = "JX-T2";
-                                locationInfo.status = "occupied";
-                                locationInfo.containercode = trayNumber;
-                                LocationInfoMapper.UpdateCode(locationInfo);
-                                PLCMessageLog mes = new PLCMessageLog();
-                                mes.plcip = this.IpAddress;
-                                mes.direction = "Receive(获取到站点1304状态变为有货)";
-                                mes.messagecontent = JsonConvert.SerializeObject(data);
-                                mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
-                                PLClogMapper.InsertMessageLog(mes);
-                            }
-                           
-                        }
-                        else if (SationStatus.Equals("10"))
-                        //代表此站点没货，没货就去清掉这里，不记录
-                        {
-                            if (la2 == null) return;
-                            if (la2.status != "available")
-                            {
-                                LocationInfoModel locationInfo = new LocationInfoModel();
-                                locationInfo.locationcode = "JX-T2";
-                                locationInfo.status = "available";
-                                locationInfo.containercode = null;
-                                LocationInfoMapper.UpdateCode(locationInfo);
-                                PLCMessageLog mes = new PLCMessageLog();
-                                mes.plcip = this.IpAddress;
-                                mes.direction = "Receive(获取到站点1304状态变从有货变为无货)";
-                                mes.messagecontent = JsonConvert.SerializeObject(data);
-                                mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
-                                PLClogMapper.InsertMessageLog(mes);
-                            }
-                        }
-                    }
-                }
+                //if (!string.IsNullOrEmpty(data.SationStatus5))
+                //{
+                //    string SationCode = data.SationStatus5.Substring(0, 4);
+                //    string SationStatus = data.SationStatus5.Substring(6, 2);
+                //    string trayNumber = data.SationStatus5.Substring(8, 8);
+                //    if (SationCode.Equals("1304"))
+                //    {
+                //        LocationInfoModel la2 = LocationInfoMapper.FindByLocationcode("JX-T2");
+                //        if (SationStatus.Equals("01"))
+                //        {//代表此站点有货
+
+                //            if (la2 == null) return;
+                //            if (la2.status != "occupied")
+                //            {
+                //                LocationInfoModel locationInfo = new LocationInfoModel();
+                //                locationInfo.locationcode = "JX-T2";
+                //                locationInfo.status = "occupied";
+                //                locationInfo.containercode = trayNumber;
+                //                LocationInfoMapper.UpdateCode(locationInfo);
+                //                PLCMessageLog mes = new PLCMessageLog();
+                //                mes.plcip = this.IpAddress;
+                //                mes.direction = "Receive(获取到站点1304状态变为有货)";
+                //                mes.messagecontent = JsonConvert.SerializeObject(data);
+                //                mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
+                //                PLClogMapper.InsertMessageLog(mes);
+                //            }
+
+                //        }
+                //        else if (SationStatus.Equals("10"))
+                //        //代表此站点没货，没货就去清掉这里，不记录
+                //        {
+                //            if (la2 == null) return;
+                //            if (la2.status != "available")
+                //            {
+                //                LocationInfoModel locationInfo = new LocationInfoModel();
+                //                locationInfo.locationcode = "JX-T2";
+                //                locationInfo.status = "available";
+                //                locationInfo.containercode = null;
+                //                LocationInfoMapper.UpdateCode(locationInfo);
+                //                PLCMessageLog mes = new PLCMessageLog();
+                //                mes.plcip = this.IpAddress;
+                //                mes.direction = "Receive(获取到站点1304状态变从有货变为无货)";
+                //                mes.messagecontent = JsonConvert.SerializeObject(data);
+                //                mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
+                //                PLClogMapper.InsertMessageLog(mes);
+                //            }
+                //        }
+                //    }
+                //}
             }
             catch (Exception ex)
             {

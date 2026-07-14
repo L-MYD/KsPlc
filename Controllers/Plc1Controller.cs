@@ -1,6 +1,7 @@
 ﻿using KsPlc.Mapper;
 using KsPlc.Models;
 using KsPlc.Models.PLC;
+using KsPlc.Models.wcs; // MODIFIED: 引入 UnBind 模型用于解绑调用
 using KsPlc.Service;
 using KsPlc.Service.Http;
 using Newtonsoft.Json;
@@ -9,6 +10,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Web;
+// MODIFIED: 为了添加DB102位监控，新增Threading引用
+using System.Threading;
 
 namespace KsPlc.Controllers
 {
@@ -20,9 +23,16 @@ namespace KsPlc.Controllers
         private const int DATA_LENGTH = 76;
         //写的DB块
         private const int DB102_BLOCK = 100;
+        private const int DB102= 102;
+        // MODIFIED: 新增用于轮询DB102位的定时器
+        private Timer _db102MonitorTimer;
+        // MODIFIED: 防止重复解绑的标志
+        private bool _db102UnbindPerformed = false;
         public Plc1Controller(string ipAddress, short rack = 0, short slot = 1)
             : base("PLC1", ipAddress, rack, slot)
         {
+            // MODIFIED: 自动启动 DB102 位轮询监控（按要求自动启用）
+            StartDb102Monitor();
         }
 
         // 实现抽象方法：ReadData
@@ -178,6 +188,97 @@ namespace KsPlc.Controllers
             return WriteData(DATA_BLOCK, 80, commandBytes);
         }
 
+        // MODIFIED: 启动/停止 DB102 位的监控，读取 DB102.DBX0.1
+        private void StartDb102Monitor(int intervalMs = 2000)
+        {
+            try
+            {
+                StopDb102Monitor();
+                _db102MonitorTimer = new Timer(Db102MonitorCallback, null, 0, intervalMs);
+                LogService.AddSystemLog("启动DB102位监控", "PLC监控", $"PLC: {_plcName}, 间隔: {intervalMs}ms", "INFO", _plcName);
+            }
+            catch (Exception ex)
+            {
+                LogService.AddSystemLog("启动DB102位监控失败", "PLC监控", $"错误: {ex.Message}", "ERROR", _plcName);
+            }
+        }
+
+        private void StopDb102Monitor()
+        {
+            try
+            {
+                _db102MonitorTimer?.Dispose();
+                _db102MonitorTimer = null;
+            }
+            catch (Exception ex)
+            {
+                LogService.AddSystemLog("停止DB102位监控失败", "PLC监控", $"错误: {ex.Message}", "ERROR", _plcName);
+            }
+        }
+
+        // 轮询回调：读取 DB102.DBX0.1 位，若为 false 并且 AGV-OUT-01 状态为 available，则执行解绑
+        private void Db102MonitorCallback(object state)
+        {
+            try
+            {
+                // 读取 DB102 第0字节
+                byte[] data = base.ReadData(DB102, 0, 1);
+                if (data == null || data.Length == 0) return;
+
+                // DBX0.1 -> byte0 的 bit1 (从0开始计数)
+                bool bitValue = ((data[0] >> 1) & 0x1) == 1;
+
+                if (!bitValue)
+                {
+                    // 只有在尚未执行解绑的情况下才进行操作，防止重复解绑
+                    if (_db102UnbindPerformed) return;
+
+                    var la = LocationInfoMapper.FindByLocationcode("AGV-OUT-01");
+                    if (la != null && la.status != "available")
+                    {
+                        try
+                        {
+                            // 原子操作：如果没有进行中的任务，则清除点位（状态设为 available，容器号清空）
+                            int affected = LocationInfoMapper.ClearIfNoTasks("AGV-OUT-01", la.lanenumber);
+                            if (affected > 0)
+                            {
+                                // 清除成功，执行解绑
+                                UnBind unBind = new UnBind();
+                                unBind.carrierCode = la.containercode;
+                                unBind.siteCode = "AGV-OUT-01";
+                                WcsApiHttpService.UnBindRcsSation(unBind);// 调用AGV解绑接口
+                                WcsApiHttpService.ReleaseStations("AGV-OUT-01");// 调用WCS释放站台接口
+                            }
+
+                            // 标记已解绑，避免重复请求
+                            _db102UnbindPerformed = true;
+
+                            LogService.AddSystemLog("DB102位触发解绑", "PLC监控",
+                                $"PLC: {_plcName}, DB102.DBX0.1=false, 已对 AGV-OUT-01 解绑: {la.containercode}", "INFO", _plcName);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogService.AddSystemLog("执行解绑失败", "PLC监控",
+                                $"错误: {ex.Message}", "ERROR", _plcName);
+                        }
+                    }
+                }
+                else
+                {
+                    // 当位恢复为 true 时，清除已解绑标志，以便后续再次触发解绑
+                    if (_db102UnbindPerformed)
+                    {
+                        _db102UnbindPerformed = false;
+                        LogService.AddSystemLog("DB102位恢复，清除解绑标志", "PLC监控", $"PLC: {_plcName}", "DEBUG", _plcName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.AddSystemLog("DB102位监控异常", "PLC监控", $"错误: {ex.Message}", "ERROR", _plcName);
+            }
+        }
+
         // 辅助方法
         //private string GetStringFromBytes(byte[] data, int start, int length)
         //{
@@ -192,6 +293,12 @@ namespace KsPlc.Controllers
             IEnumerable<byte> bytelist = from t in RecvByteList where t > 31 && t < 126 select t;
             List<byte> ByteList = bytelist.ToList();
             return ByteList.ToArray();
+        }
+        // MODIFIED: 当控制器释放时停止DB102监控
+        public new void Dispose()
+        {
+            StopDb102Monitor();
+            base.Dispose();
         }
     }
 }
