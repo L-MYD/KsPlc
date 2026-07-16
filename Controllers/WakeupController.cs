@@ -34,17 +34,24 @@ namespace KsPlc.Controllers
 
         [System.Web.Mvc.HttpPost]
         [System.Web.Mvc.Route("plcapi")]
-        public JsonResult PlcServiceApi([FromBody] PlcApiModel model)
+        public async System.Threading.Tasks.Task<JsonResult> PlcServiceApi([FromBody] PlcApiModel model)
         {
             string location = "1061";
             string podid = model.PodId;
             // PLC4配置,缓存区短程提升机plc ip
-            var plc4 = new Plc4Controller(
-                ipAddress: "192.168.30.124",
-                rack: 0,
-                slot: 1
-           );
-            plc4.Connect();
+            // 尝试从 PlcManager 获取已注册的 PLC4 实例，若不存在则创建并注册
+            var plc4 = PlcManager.Instance.GetController("PLC4") as Plc4Controller;
+            if (plc4 == null)
+            {
+                plc4 = new Plc4Controller(ipAddress: "192.168.30.124", rack: 0, slot: 1);
+                PlcManager.Instance.AddController(plc4);
+                plc4.Connect();
+            }
+            else if (!plc4.IsConnected)
+            {
+                // 若未连接，尝试异步连接并等待短时间
+                await System.Threading.Tasks.Task.Run(() => plc4.Connect()).ConfigureAwait(false);
+            }
             bool isError = plc4.GetPLC_ERROR();      // 是否故障
             bool isLow = plc4.GetLOW_DOWN();          // 是否低位状态
             bool isUp = plc4.GetUP_DOWN();            // 是否高位状态
@@ -65,16 +72,16 @@ namespace KsPlc.Controllers
                     plcSendMes6.UnitWeigh = "000000";
                     plcSendMes6.ReasonCode = "00000000";
                     PlcSendMesMapper.Insert(plcSendMes6);
-                    // ---- 轮询等待提升机到达高位 ----
+                    // ---- 轮询等待提升机到达高位（异步非阻塞） ----
                     int maxRetries = 30;          // 最多尝试30次
                     int retryInterval = 1000;     // 间隔1秒（毫秒）
 
                     for (int i = 0; i < maxRetries; i++)
                     {
-                        System.Threading.Thread.Sleep(retryInterval); // 等待1秒
+                        await System.Threading.Tasks.Task.Delay(retryInterval).ConfigureAwait(false);
 
-                        // 重新读取实时状态
-                        isUp = plc4.GetUP_DOWN();
+                        // 在后台线程读取 PLC 状态，避免阻塞请求线程
+                        isUp = await System.Threading.Tasks.Task.Run(() => plc4.GetUP_DOWN()).ConfigureAwait(false);
                         if (isUp == true)
                         {
                             LocationInfoModel locationInfo = new LocationInfoModel();
@@ -82,42 +89,41 @@ namespace KsPlc.Controllers
                             locationInfo.status = "occupied";
                             locationInfo.containercode = podid;
                             LocationInfoMapper.UpdateCode(locationInfo);
-                            //PLCMessageLog mes = new PLCMessageLog();
-                            //mes.plcip = "192.168.30.124";
-                            //mes.direction = "Receive(获取到站点1601状态变为高位)";
-                            //mes.messagecontent = JsonConvert.SerializeObject(mes.direction);
-                            //mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
-                            //PLClogMapper.InsertMessageLog(mes);
-                            plc4.Disconnect();
+                            // 保持长连接，避免每次请求断开
                             // 到达高位，成功
                             return Json(ApiResponse<string>.Success("成功"));
                         }
                     }
-                    plc4.Disconnect();
+                    // 保持长连接，避免每次请求断开
                     // 超时未到位，返回失败
                     return Json(ApiResponse<string>.Error("失败"));
                 }
             }
             Console.WriteLine($"故障: {isError}, 低位: {isLow}, 高位: {isUp}");
 
-            plc4.Disconnect();
+            // 保持长连接，避免每次请求断开
             // 返回 JSON 格式的成功响应
             return Json(ApiResponse<string>.Success("失败"));
         }
 
         [System.Web.Mvc.HttpPost]
         [System.Web.Mvc.Route("plcapiDB")]
-        public JsonResult PlcServiceApiDB([FromBody] PlcApiModel model)
+        public async System.Threading.Tasks.Task<JsonResult> PlcServiceApiDB([FromBody] PlcApiModel model)
         {
             string location = "1061";
             string podid = model.PodId;
             // PLC4配置,缓存区短程提升机plc ip
-            var plc4 = new Plc4Controller(
-                ipAddress: "192.168.30.124",
-                rack: 0,
-                slot: 1
-           );
-            plc4.Connect();
+            var plc4 = PlcManager.Instance.GetController("PLC4") as Plc4Controller;
+            if (plc4 == null)
+            {
+                plc4 = new Plc4Controller(ipAddress: "192.168.30.124", rack: 0, slot: 1);
+                PlcManager.Instance.AddController(plc4);
+                plc4.Connect();
+            }
+            else if (!plc4.IsConnected)
+            {
+                await System.Threading.Tasks.Task.Run(() => plc4.Connect()).ConfigureAwait(false);
+            }
             bool isError = plc4.GetPLC_ERROR();      // 是否故障
             bool isLow = plc4.GetLOW_DOWN();          // 是否低位状态
             bool isUp = plc4.GetUP_DOWN();            // 是否高位状态
@@ -144,10 +150,8 @@ namespace KsPlc.Controllers
 
                     for (int i = 0; i < maxRetries; i++)
                     {
-                        System.Threading.Thread.Sleep(retryInterval); // 等待1秒
-
-                        // 重新读取实时状态
-                        isUp = plc4.GetUP_DOWN();
+                        await System.Threading.Tasks.Task.Delay(retryInterval).ConfigureAwait(false);
+                        isUp = await System.Threading.Tasks.Task.Run(() => plc4.GetUP_DOWN()).ConfigureAwait(false);
                         if (isUp == true)
                         {
                             LocationInfoModel locationInfo = new LocationInfoModel();
@@ -155,25 +159,19 @@ namespace KsPlc.Controllers
                             locationInfo.status = "occupied";
                             locationInfo.containercode = podid;
                             LocationInfoMapper.UpdateCode(locationInfo);
-                            //PLCMessageLog mes = new PLCMessageLog();
-                            //mes.plcip = "192.168.30.124";
-                            //mes.direction = "Receive(获取到站点1601状态变为高位)";
-                            //mes.messagecontent = JsonConvert.SerializeObject(mes.direction);
-                            //mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
-                            //PLClogMapper.InsertMessageLog(mes);
-                            plc4.Disconnect();
+                            // 保持长连接，避免每次请求断开
                             // 到达高位，成功
                             return Json(ApiResponse<string>.Success("成功"));
                         }
                     }
-                    plc4.Disconnect();
+                    // 保持长连接，避免每次请求断开
                     // 超时未到位，返回失败
                     return Json(ApiResponse<string>.Error("失败"));
                 }
             }
             Console.WriteLine($"故障: {isError}, 低位: {isLow}, 高位: {isUp}");
 
-            plc4.Disconnect();
+            // 保持长连接，避免每次请求断开
             // 返回 JSON 格式的成功响应
             return Json(ApiResponse<string>.Success("失败"));
         }

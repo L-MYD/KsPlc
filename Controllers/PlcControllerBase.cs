@@ -24,7 +24,10 @@ namespace KsPlc.Controllers
         protected DateTime _lastSuccessTime = DateTime.MinValue;
         protected readonly object _connectionLock = new object();
         private int _reconnectCount = 0;
-        private const int MAX_RECONNECT_RETRY = 999; // 最大重连次数（几乎无限重试）
+        private const int MAX_RECONNECT_RETRY = 50; // 最大重连次数（限制避免无限重试）
+        private CancellationTokenSource _reconnectCts;
+        private readonly SemaphoreSlim _reconnectSemaphore = new SemaphoreSlim(1, 1);
+        private volatile bool _reconnectPending = false;
 
         // ========== 常量 ==========
         protected const int DEFAULT_POLLING_INTERVAL = 1000;      // 默认轮询间隔1秒
@@ -111,6 +114,8 @@ namespace KsPlc.Controllers
                     _isConnected = true;
                     _lastSuccessTime = DateTime.Now;
                     _reconnectCount = 0; // 重置重连计数
+                    // 连接成功后取消任何待处理的重连任务
+                    CancelPendingReconnect();
                      // 连接成功：更新数据库状态为在线
                     PlcInfoMapper.UpdatePlcStatusByIp(_ipAddress, "online");
                     // 启动数据轮询
@@ -129,14 +134,14 @@ namespace KsPlc.Controllers
                     _isConnected = false;
                     // 连接失败：更新数据库状态为离线
                     PlcInfoMapper.UpdatePlcStatusByIp(_ipAddress, "offline");
-                    //LogService.AddSystemLog($"PLC连接失败", "PLC连接",
-                    //    $"PLC名称: {_plcName}, 错误: {ex.Message}", "ERROR", _plcName);
+                    LogService.AddSystemLog($"PLC连接失败", "PLC连接",
+                        $"PLC名称: {_plcName}, 错误: {ex}", "ERROR", _plcName);
 
                     // 触发连接状态变化事件
                     OnConnectionStatusChanged?.Invoke(_plcName, false);
 
                     // 启动首次重连（延迟5秒）
-                    ScheduleReconnect(INITIAL_RECONNECT_DELAY);
+                    StartReconnectDelayed(INITIAL_RECONNECT_DELAY);
 
                     return false;
                 }
@@ -173,7 +178,7 @@ namespace KsPlc.Controllers
                     OnConnectionStatusChanged?.Invoke(_plcName, false);
 
                     // 启动重连（延迟10秒）
-                    ScheduleReconnect(10000);
+                    StartReconnectDelayed(10000);
                 }
                 catch (Exception ex)
                 {
@@ -205,8 +210,9 @@ namespace KsPlc.Controllers
 
                 _isConnected = false;
 
-                // 立即重连
-                Task.Run(() => Connect());
+                // 取消任何待处理重连并立即尝试连接（异步）
+                CancelPendingReconnect();
+                Task.Run(() => StartReconnectDelayed(0));
             }
         }
 
@@ -268,18 +274,16 @@ namespace KsPlc.Controllers
                 }
                 catch (Exception ex)
                 {
-                    //LogService.AddSystemLog($"读取PLC数据失败", "数据读取",
-                    //    $"PLC名称: {_plcName}, DB{dataBlock}, 地址: {startAddress}, 错误: {ex.Message}",
-                    //    "ERROR", _plcName);
+                    LogService.AddSystemLog($"读取PLC数据失败", "数据读取",
+                        $"PLC名称: {_plcName}, DB{dataBlock}, 地址: {startAddress}, 错误: {ex}",
+                        "ERROR", _plcName);
 
-                    // 标记为断开连接
+                    // 标记为断开连接并触发事件
                     _isConnected = false;
-
-                    // 触发连接状态变化事件
                     OnConnectionStatusChanged?.Invoke(_plcName, false);
 
-                    // 计划重连
-                    ScheduleReconnect(5000);
+                    // 启动重连
+                    StartReconnectDelayed(5000);
 
                     return null;
                 }
@@ -323,8 +327,8 @@ namespace KsPlc.Controllers
                     // 触发连接状态变化事件
                     OnConnectionStatusChanged?.Invoke(_plcName, false);
 
-                    // 计划重连
-                    ScheduleReconnect(5000);
+                    // 启动重连
+                    StartReconnectDelayed(5000);
 
                     return false;
                 }
@@ -395,38 +399,111 @@ namespace KsPlc.Controllers
         // ========== 重连逻辑 ==========
 
         /// <summary>
-        /// 计划重连
+        /// 启动带延迟的重连（单实例）
         /// </summary>
-        private void ScheduleReconnect(int delayMilliseconds)
+        private void StartReconnectDelayed(int delayMilliseconds)
         {
-            // 检查重连次数
-            if (_reconnectCount >= MAX_RECONNECT_RETRY)
+            // 如果已经有重连在进行则不重复启动
+            if (_reconnectPending) return;
+
+            _reconnectPending = true;
+            _reconnectCts?.Cancel();
+            _reconnectCts?.Dispose();
+            _reconnectCts = new CancellationTokenSource();
+            var token = _reconnectCts.Token;
+
+            Task.Run(async () =>
             {
-                //LogService.AddSystemLog($"已达到最大重连次数，停止重连", "PLC重连",
-                //    $"PLC名称: {_plcName}, 已尝试: {_reconnectCount}次", "ERROR", _plcName);
-                return;
-            }
-
-            _reconnectCount++;
-
-            // 计算延迟时间（使用指数退避算法）
-            int actualDelay = CalculateReconnectDelay(delayMilliseconds, _reconnectCount);
-
-            //LogService.AddSystemLog($"计划重连", "PLC重连",
-            //    $"PLC名称: {_plcName}, 延迟: {actualDelay}ms, 重连次数: {_reconnectCount}", "INFO", _plcName);
-
-            // 使用Task.Delay来计划重连
-            Task.Delay(actualDelay).ContinueWith(_ =>
-            {
-                if (!_isConnected) // 如果仍然未连接
+                try
                 {
-                    //LogService.AddSystemLog($"执行计划重连", "PLC重连",
-                    //    $"PLC名称: {_plcName}, 尝试连接", "DEBUG", _plcName);
+                    if (delayMilliseconds > 0)
+                        await Task.Delay(delayMilliseconds, token).ConfigureAwait(false);
 
-                    // 异步执行连接
-                    Task.Run(() => Connect());
+                    await ReconnectLoopAsync(token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { /* 取消即可 */ }
+                catch (Exception ex)
+                {
+                    LogService.AddSystemLog($"重连任务异常", "PLC重连", $"PLC名称: {_plcName}, 错误: {ex}", "ERROR", _plcName);
+                }
+                finally
+                {
+                    _reconnectPending = false;
                 }
             });
+        }
+
+        private void CancelPendingReconnect()
+        {
+            try
+            {
+                _reconnectCts?.Cancel();
+                _reconnectCts?.Dispose();
+                _reconnectCts = null;
+                _reconnectPending = false;
+            }
+            catch { }
+        }
+
+        private async Task ReconnectLoopAsync(CancellationToken token)
+        {
+            int attempt = 0;
+
+            while (!token.IsCancellationRequested && attempt < MAX_RECONNECT_RETRY && !_isConnected)
+            {
+                attempt++;
+                _reconnectCount = attempt;
+
+                try
+                {
+                    // 保证只有一个重连尝试在进行
+                    await _reconnectSemaphore.WaitAsync(token).ConfigureAwait(false);
+                    try
+                    {
+                        if (token.IsCancellationRequested) break;
+
+                        // 同步调用 Connect（内部有锁），避免并发冲突
+                        var success = false;
+                        try
+                        {
+                            success = Connect();
+                        }
+                        catch (Exception ex)
+                        {
+                            LogService.AddSystemLog($"重连尝试异常", "PLC重连", $"PLC名称: {_plcName}, 错误: {ex}", "WARN", _plcName);
+                            success = false;
+                        }
+
+                        if (success)
+                        {
+                            // 连接成功，退出循环
+                            return;
+                        }
+                    }
+                    finally
+                    {
+                        _reconnectSemaphore.Release();
+                    }
+                }
+                catch (OperationCanceledException) { break; }
+                catch (Exception ex)
+                {
+                    LogService.AddSystemLog($"重连循环异常", "PLC重连", $"PLC名称: {_plcName}, 错误: {ex}", "ERROR", _plcName);
+                }
+
+                // 计算下次重连延迟（指数退避 + 随机抖动）
+                int delay = CalculateReconnectDelay(INITIAL_RECONNECT_DELAY, attempt);
+                var jitter = new Random().Next(0, Math.Min(1000, delay / 4));
+                delay = Math.Min(60000, delay + jitter);
+
+                try
+                {
+                    await Task.Delay(delay, token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { break; }
+            }
+
+            LogService.AddSystemLog($"停止重连循环", "PLC重连", $"PLC名称: {_plcName}, 尝试次数: {_reconnectCount}", "INFO", _plcName);
         }
 
         /// <summary>
@@ -500,8 +577,8 @@ namespace KsPlc.Controllers
                             // 触发连接状态变化事件
                             OnConnectionStatusChanged?.Invoke(_plcName, false);
 
-                            // 计划重连
-                            ScheduleReconnect(5000);
+                            // 启动重连
+                            StartReconnectDelayed(5000);
                         }
                     }
                 }
@@ -517,7 +594,7 @@ namespace KsPlc.Controllers
                             //    $"PLC名称: {_plcName}, 重连次数: {_reconnectCount}", "DEBUG", _plcName);
 
                             // 检查是否有重连计划，如果没有则计划一个
-                            ScheduleReconnect(5000);
+                            StartReconnectDelayed(5000);
                         }
                     }
                 }
@@ -540,6 +617,9 @@ namespace KsPlc.Controllers
                 // 停止所有定时器
                 StopPolling();
                 _healthCheckTimer?.Dispose();
+
+                // 取消任何待处理的重连任务
+                CancelPendingReconnect();
 
                 // 断开连接
                 lock (_connectionLock)

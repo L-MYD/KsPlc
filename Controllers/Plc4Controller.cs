@@ -186,7 +186,13 @@ namespace KsPlc.Controllers
                 var CanWrite_Bytes = rawData.Skip(72).Take(4).ToList();
 
                 var MessType = Encoding.ASCII.GetString(ClearNullChar(MessType_Bytes));
-                var UnitID = Encoding.ASCII.GetString(ClearNullChar(UnitID_Bytes));
+                // 原代码
+                // var UnitID = Encoding.ASCII.GetString(ClearNullChar(UnitID_Bytes));
+
+                // 新代码
+                var rawUnitID = Encoding.ASCII.GetString(ClearNullChar(UnitID_Bytes));
+                // 移除尾部 * 或其他填充符（只保留字母和数字）
+                var UnitID = new string(rawUnitID.TakeWhile(c => char.IsLetterOrDigit(c)).ToArray());
                 var FromLocation = Encoding.ASCII.GetString(ClearNullChar(FromLocation_Bytes)).PadLeft(4, '0');
                 var ToLocation = Encoding.ASCII.GetString(ClearNullChar(ToLocation_Bytes));
                 var UnitHigh = Encoding.ASCII.GetString(ClearNullChar(UnitHigh_Bytes));
