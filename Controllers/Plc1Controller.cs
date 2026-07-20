@@ -173,7 +173,7 @@ namespace KsPlc.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"写入字符串到PLC失败: {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"写入字符串到PLC失败: {ex.Message}");
                 LogService.AddSystemLog($"写入字符串到PLC失败", "PLC通信",
                     $"异常: {ex.Message}, DB{dbBlock}.DBB{startAddress}, 值: {value}", "ERROR", "PLC1");
                 return false;

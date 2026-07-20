@@ -86,7 +86,7 @@ namespace KsPlc.Service.Http
                     // 可选：记录响应日志
                     if (!string.IsNullOrEmpty(responseContent))
                     {
-                        Console.WriteLine($"响应内容: {responseContent}");
+                        System.Diagnostics.Trace.WriteLine($"响应内容: {responseContent}");
                     }
                 }
             }
@@ -131,7 +131,7 @@ namespace KsPlc.Service.Http
                     // 可选：记录响应日志
                     if (!string.IsNullOrEmpty(responseContent))
                     {
-                        Console.WriteLine($"响应内容: {responseContent}");
+                        System.Diagnostics.Trace.WriteLine($"响应内容: {responseContent}");
                     }
                 }
             }

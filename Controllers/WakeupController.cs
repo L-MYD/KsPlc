@@ -98,7 +98,7 @@ namespace KsPlc.Controllers
                     return Json(ApiResponse<string>.Error("失败"));
                 }
             }
-            Console.WriteLine($"故障: {isError}, 低位: {isLow}, 高位: {isUp}");
+            System.Diagnostics.Trace.WriteLine($"故障: {isError}, 低位: {isLow}, 高位: {isUp}");
 
             plc4.Disconnect();
             // 返回 JSON 格式的成功响应
@@ -171,7 +171,7 @@ namespace KsPlc.Controllers
                     return Json(ApiResponse<string>.Error("失败"));
                 }
             }
-            Console.WriteLine($"故障: {isError}, 低位: {isLow}, 高位: {isUp}");
+            System.Diagnostics.Trace.WriteLine($"故障: {isError}, 低位: {isLow}, 高位: {isUp}");
 
             plc4.Disconnect();
             // 返回 JSON 格式的成功响应
