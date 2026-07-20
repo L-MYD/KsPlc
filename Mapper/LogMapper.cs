@@ -33,7 +33,7 @@ namespace KsPlc.Mapper
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"插入日志失败: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"插入日志失败: {ex.Message}");
                     return false;
                 }
             }
@@ -57,7 +57,7 @@ namespace KsPlc.Mapper
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"批量插入日志失败: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"批量插入日志失败: {ex.Message}");
                     return false;
                 }
             }
@@ -75,7 +75,7 @@ namespace KsPlc.Mapper
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"查询日志失败: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"查询日志失败: {ex.Message}");
                     return null;
                 }
             }
@@ -93,7 +93,7 @@ namespace KsPlc.Mapper
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"查询所有日志失败: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"查询所有日志失败: {ex.Message}");
                     return new List<LogModel>();
                 }
             }
@@ -145,7 +145,7 @@ namespace KsPlc.Mapper
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"条件查询日志失败: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"条件查询日志失败: {ex.Message}");
                     return new List<LogModel>();
                 }
             }
@@ -190,7 +190,7 @@ namespace KsPlc.Mapper
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"分页查询日志失败: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"分页查询日志失败: {ex.Message}");
                     return (new List<LogModel>(), 0);
                 }
             }
@@ -223,7 +223,7 @@ namespace KsPlc.Mapper
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"更新日志失败: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"更新日志失败: {ex.Message}");
                     return false;
                 }
             }
@@ -242,7 +242,7 @@ namespace KsPlc.Mapper
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"删除日志失败: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"删除日志失败: {ex.Message}");
                     return false;
                 }
             }
@@ -261,7 +261,7 @@ namespace KsPlc.Mapper
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"批量删除日志失败: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"批量删除日志失败: {ex.Message}");
                     return false;
                 }
             }
@@ -280,7 +280,7 @@ namespace KsPlc.Mapper
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"归档日志失败: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"归档日志失败: {ex.Message}");
                     return false;
                 }
             }
@@ -305,7 +305,7 @@ namespace KsPlc.Mapper
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"获取日志统计失败: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"获取日志统计失败: {ex.Message}");
                     return null;
                 }
             }
@@ -358,7 +358,7 @@ namespace KsPlc.Mapper
         //        }
         //        catch (Exception ex)
         //        {
-        //            Console.WriteLine($"分页查询系统日志失败: {ex.Message}");
+        //            System.Diagnostics.Trace.WriteLine($"分页查询系统日志失败: {ex.Message}");
         //            return (new List<LogModel>(), 0);
         //        }
         //    }
@@ -435,7 +435,7 @@ namespace KsPlc.Mapper
         //        }
         //        catch (Exception ex)
         //        {
-        //            Console.WriteLine($"查询日志失败: {ex.Message}");
+        //            System.Diagnostics.Trace.WriteLine($"查询日志失败: {ex.Message}");
         //            return (new List<LogModel>(), 0);
         //        }
         //    }

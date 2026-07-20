@@ -22,7 +22,7 @@ namespace KsPlc.Service
         /// </summary>
         public void Start(int intervalSeconds = 5)
         {
-            Console.WriteLine($"启动PLC发送定时任务，间隔: {intervalSeconds}秒");
+            System.Diagnostics.Trace.WriteLine($"启动PLC发送定时任务，间隔: {intervalSeconds}秒");
             _timer = new Timer(SendDataToPlc, null, 0, intervalSeconds * 1000);
         }
 
@@ -32,7 +32,7 @@ namespace KsPlc.Service
         public void Stop()
         {
             _timer?.Dispose();
-            Console.WriteLine("停止PLC发送定时任务");
+            System.Diagnostics.Trace.WriteLine("停止PLC发送定时任务");
         }
 
         /// <summary>
@@ -53,7 +53,7 @@ namespace KsPlc.Service
 
                     if (dataList != null && dataList.Count > 0)
                     {
-                        Console.WriteLine($"发现 {dataList.Count} 条待发送数据");
+                        System.Diagnostics.Trace.WriteLine($"发现 {dataList.Count} 条待发送数据");
 
                         // 2. 循环处理每条数据
                         foreach (var data in dataList)
@@ -64,7 +64,7 @@ namespace KsPlc.Service
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"PLC发送任务异常: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"PLC发送任务异常: {ex.Message}");
                 }
                 finally
                 {
@@ -88,7 +88,7 @@ namespace KsPlc.Service
 
                 if (!canWrite)
                 {
-                    Console.WriteLine($"PLC {data.PlcIp} DB{dbBlock} 尚未读完上一条数据，跳过发送");
+                    System.Diagnostics.Trace.WriteLine($"PLC {data.PlcIp} DB{dbBlock} 尚未读完上一条数据，跳过发送");
                     return; // 直接返回，不发送
                 }
 
@@ -113,19 +113,19 @@ namespace KsPlc.Service
 
                 if (success)
                 {
-                    Console.WriteLine($"发送成功: PLC={data.PlcIp}, DB={dbBlock}, 单元={data.UnitID}");
+                    System.Diagnostics.Trace.WriteLine($"发送成功: PLC={data.PlcIp}, DB={dbBlock}, 单元={data.UnitID}");
 
                     // 6. 发送成功后删除数据库记录
                     KsPlc.Mapper.PlcSendMesMapper.Delete(data.id);
                 }
                 else
                 {
-                    Console.WriteLine($"发送失败: PLC={data.PlcIp}, DB={dbBlock}, 单元={data.UnitID}");
+                    System.Diagnostics.Trace.WriteLine($"发送失败: PLC={data.PlcIp}, DB={dbBlock}, 单元={data.UnitID}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"处理数据 {data.id} 异常: {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"处理数据 {data.id} 异常: {ex.Message}");
             }
         }
 
@@ -154,7 +154,7 @@ namespace KsPlc.Service
                             if (actualLength >= 2)
                             {
                                 string canWriteValue = System.Text.Encoding.ASCII.GetString(canWriteBytes, 2, 2);
-                                Console.WriteLine($"PLC {ip} DB{dbBlock} CanWrite状态: {canWriteValue}");
+                                System.Diagnostics.Trace.WriteLine($"PLC {ip} DB{dbBlock} CanWrite状态: {canWriteValue}");
                                 return canWriteValue == "10";
                             }
                         }
@@ -162,14 +162,14 @@ namespace KsPlc.Service
                     }
                     else
                     {
-                        Console.WriteLine($"PLC连接失败，无法检查状态: IP={ip}");
+                        System.Diagnostics.Trace.WriteLine($"PLC连接失败，无法检查状态: IP={ip}");
                         return false;
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"检查PLC {ip} DB{dbBlock} 状态异常: {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"检查PLC {ip} DB{dbBlock} 状态异常: {ex.Message}");
                 return false;
             }
         }
@@ -258,7 +258,7 @@ namespace KsPlc.Service
         {
             if (string.IsNullOrEmpty(dbData))
             {
-                Console.WriteLine("DbData字段为空，使用默认DB101");
+                System.Diagnostics.Trace.WriteLine("DbData字段为空，使用默认DB101");
                 return 101;
             }
 
@@ -278,13 +278,13 @@ namespace KsPlc.Service
                 }
                 else
                 {
-                    Console.WriteLine($"无法解析DbData字段: {dbData}，使用默认DB101");
+                    System.Diagnostics.Trace.WriteLine($"无法解析DbData字段: {dbData}，使用默认DB101");
                     return 101;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"解析DbData字段异常: {ex.Message}，使用默认DB101");
+                System.Diagnostics.Trace.WriteLine($"解析DbData字段异常: {ex.Message}，使用默认DB101");
                 return 101;
             }
         }
@@ -303,19 +303,19 @@ namespace KsPlc.Service
                     if (plc.IsConnected)
                     {
                         plc.WriteBytes(DataType.DataBlock, dbBlock, startAddress, data);
-                        Console.WriteLine($"写入PLC成功: IP={ip}, DB={dbBlock}, Address={startAddress}, 数据长度={data.Length}");
+                        System.Diagnostics.Trace.WriteLine($"写入PLC成功: IP={ip}, DB={dbBlock}, Address={startAddress}, 数据长度={data.Length}");
                         return true;
                     }
                     else
                     {
-                        Console.WriteLine($"PLC连接失败: IP={ip}");
+                        System.Diagnostics.Trace.WriteLine($"PLC连接失败: IP={ip}");
                         return false;
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"写入PLC {ip} 失败: {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"写入PLC {ip} 失败: {ex.Message}");
                 return false;
             }
         }
