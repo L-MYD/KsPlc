@@ -54,19 +54,19 @@ namespace KsPlc.Mapper
             }
         }
         /// <summary>
-        /// 使用 NOT EXISTS 条件更新点位状态（无任务时才能清除）
+        /// 使用 NOT EXISTS 条件更新点位状态（无任务时才能清除），taskType 模糊匹配
         /// </summary>
         public static int ClearIfNoTasks(string locationcode, string taskType)
         {
             string sql = @"
-         UPDATE wcs_locationinfo
-         SET status = 'available', containercode = NULL
-         WHERE locationcode = @locationcode
-          AND NOT EXISTS (
-              SELECT 1 FROM wcs_taskinfo
-              WHERE TaskType = @taskType
-                AND TaskStatus IN ('assigned', 'executing')
-          )";
+UPDATE wcs_locationinfo
+SET status = 'available', containercode = NULL
+WHERE locationcode = @locationcode
+  AND NOT EXISTS (
+      SELECT 1 FROM wcs_taskinfo
+      WHERE TaskType LIKE CONCAT('%', @taskType, '%')
+        AND TaskStatus IN ('assigned', 'executing')
+  )";
             using (var connection = new MySqlConnection(SqlConn))
             {
                 connection.Open();
