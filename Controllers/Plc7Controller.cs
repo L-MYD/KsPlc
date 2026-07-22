@@ -279,7 +279,7 @@ namespace KsPlc.Controllers
                         {//代表此站点有货
 
                             if (la2 == null) return;
-                            if (la2.status != "occupied")
+                            if (la2.status != "occupied" && trayNumber != "********")
                             {
                                 LocationInfoModel locationInfo = new LocationInfoModel();
                                 locationInfo.locationcode = "DB-T2";
