@@ -302,7 +302,7 @@ namespace KsPlc.Controllers
                             if (la2.status != "available")
                             {
                                 LocationInfoModel locationInfo = new LocationInfoModel();
-                                locationInfo.locationcode = "FH-T2";
+                                locationInfo.locationcode = "DB-T2";
                                 locationInfo.status = "available";
                                 locationInfo.containercode = null;
                                 LocationInfoMapper.UpdateCode(locationInfo);

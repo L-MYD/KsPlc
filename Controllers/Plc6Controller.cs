@@ -165,11 +165,13 @@ namespace KsPlc.Controllers
                 var Sation_Status2 = rawData.Skip(44).Take(38).ToList();   // 44-82
                 var Sation_Status3 = rawData.Skip(84).Take(38).ToList();   // 84-122
                 var Sation_Status4 = rawData.Skip(124).Take(38).ToList();   // 122-162
+                var Sation_Status5 = rawData.Skip(164).Take(38).ToList();   // 162-202
 
                 var SationStatus1 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status1));
                 var SationStatus2 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status2));
                 var SationStatus3 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status3));
                 var SationStatus4 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status4));
+                var SationStatus5 = Encoding.ASCII.GetString(ClearNullChar(Sation_Status5));
 
                 return new
                 {
@@ -177,6 +179,7 @@ namespace KsPlc.Controllers
                     SationStatus2,
                     SationStatus3,
                     SationStatus4,
+                    SationStatus5,
                     Timestamp = DateTime.Now,
                     DataBlock = STATUS_BLOCK,
                     SourceIP = this.IpAddress,
@@ -274,7 +277,7 @@ namespace KsPlc.Controllers
             try
             {
                 //站点2状态检查  4003需要----YK-T1
-                if (!string.IsNullOrEmpty(data.SationStatus1))
+                if (!string.IsNullOrEmpty(data.SationStatus4))
                 {
                     string SationCode = data.SationStatus1.Substring(0, 4);
                     string SationStatus = data.SationStatus1.Substring(6, 2);
@@ -284,7 +287,8 @@ namespace KsPlc.Controllers
                         if (SationStatus.Equals("10")) // 站点为空
                         {
                             LocationInfoModel la = LocationInfoMapper.FindByLocationcode("YK-T1");
-                            if (la == null) return;
+                            LocationInfoModel la2 = LocationInfoMapper.FindByLocationcode("F4-RETURN-02");
+                            if (la == null && la2 == null) return;
 
                             // 只有点位不是 available 状态时，才需要尝试清除（避免重复清除 available 点位）
                             if (la.status != "available")
@@ -298,6 +302,17 @@ namespace KsPlc.Controllers
                                     unBind.carrierCode = la.containercode;
                                     unBind.siteCode = "YK-T1";
                                     WcsApiHttpService.UnBindRcsSation(unBind);
+                                }
+                                // 如果 affected == 0，说明有进行中的任务，不清除也不解绑
+                            }
+                            else if(la2.status != "available")
+                            {
+                                // 原子操作：如果没有进行中的任务，则清除点位（状态设为 available，容器号清空）
+                                int affected = LocationInfoMapper.ClearIfNoTasks("F4-RETURN-02", la.lanenumber);
+                                if (affected > 0)
+                                {
+                                    // 清除成功，执行解绑
+                                    WcsApiHttpService.ReleaseStations(SationCode);
                                 }
                                 // 如果 affected == 0，说明有进行中的任务，不清除也不解绑
                             }

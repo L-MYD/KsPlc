@@ -100,7 +100,7 @@ namespace KsPlc
                     slot: 1
                );
                 _plcManager.AddController(plc5);
-                // PLC6配置,内销平库区牙叉式提升机plc ip
+                // PLC6配置,内销平库区出入库立库提升机plc ip
                 var plc6 = new Plc6Controller(
                     ipAddress: "192.168.30.102",
                     rack: 0,
@@ -114,7 +114,7 @@ namespace KsPlc
                     slot: 1
                );
                 _plcManager.AddController(plc4);
-                // PLC7配置,内销平库区入库提升机plc ip
+                // PLC7配置,内销平库区牙叉式提升机plc ip
                 var plc7 = new Plc7Controller(
                     ipAddress: "192.168.30.122",
                     rack: 0,
