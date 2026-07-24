@@ -735,8 +735,21 @@ namespace KsPlc.Controllers
             // 只有点位不是 available 状态时，才需要尝试清除（避免重复清除 available 点位）
             if (la.status != "available")
             {
+                // 拆分任务类型（支持中文逗号、英文逗号，并去除空格）
+                var separators = new[] { '，', ',' };
+                var taskTypes = la.lanenumber
+                                  .Split(separators, StringSplitOptions.RemoveEmptyEntries)
+                                  .Select(t => t.Trim())
+                                  .ToList();
+
+                // 如果 la.lanenumber 为空或拆分后为空，需根据业务决定是否直接清除（但通常应有值）
+                if (!taskTypes.Any())
+                {
+                    System.Diagnostics.Trace.WriteLine($"点位 {sitecode} 的 lanenumber 为空，无法检查任务，不清除点位");
+                    return;  // 退出 CheckStationStatus 方法，或只退出当前站点的处理
+                }
                 // 原子操作：如果没有进行中的任务，则清除点位（状态设为 available，容器号清空）
-                int affected = LocationInfoMapper.ClearIfNoTasks(sitecode, la.lanenumber);
+                int affected = LocationInfoMapper.ClearIfNoTasks(sitecode, taskTypes);
                 if (affected > 0)
                 {
                     // 清除成功，执行解绑

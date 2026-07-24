@@ -315,6 +315,7 @@ namespace KsPlc.Controllers
                 //}
 
                 //站点2状态检查  1201需要----FH-T1
+                // 站点2状态检查  1201需要----FH-T1
                 if (!string.IsNullOrEmpty(data.SationStatus1))
                 {
                     string SationCode = data.SationStatus1.Substring(0, 4);
@@ -327,20 +328,32 @@ namespace KsPlc.Controllers
                             LocationInfoModel la = LocationInfoMapper.FindByLocationcode("FH-T1");
                             if (la == null) return;
 
-                            // 只有点位不是 available 状态时，才需要尝试清除（避免重复清除 available 点位）
                             if (la.status != "available")
                             {
-                                // 原子操作：如果没有进行中的任务，则清除点位（状态设为 available，容器号清空）
-                                int affected = LocationInfoMapper.ClearIfNoTasks("FH-T1", la.lanenumber);
+                                // 拆分任务类型（支持中文逗号、英文逗号，并去除空格）
+                                var separators = new[] { '，', ',' };
+                                var taskTypes = la.lanenumber
+                                                  .Split(separators, StringSplitOptions.RemoveEmptyEntries)
+                                                  .Select(t => t.Trim())
+                                                  .ToList();
+
+                                // 如果 la.lanenumber 为空或拆分后为空，需根据业务决定是否直接清除（但通常应有值）
+                                if (!taskTypes.Any())
+                                {
+                                    System.Diagnostics.Trace.WriteLine($"点位 FH-T1 的 lanenumber 为空，无法检查任务，不清除点位");
+                                    return;  // 退出 CheckStationStatus 方法，或只退出当前站点的处理
+                                }
+
+                                // 原子清除：判断所有任务类型均无进行中任务，才执行更新
+                                int affected = LocationInfoMapper.ClearIfNoTasks("FH-T1", taskTypes);
                                 if (affected > 0)
                                 {
-                                    // 清除成功，执行解绑
                                     UnBind unBind = new UnBind();
                                     unBind.carrierCode = la.containercode;
                                     unBind.siteCode = "FH-T1";
                                     WcsApiHttpService.UnBindRcsSation(unBind);
                                 }
-                                // 如果 affected == 0，说明有进行中的任务，不清除也不解绑
+                                // 如果 affected == 0，说明有任务，不清除不解绑
                             }
                         }
                     }
@@ -369,9 +382,9 @@ namespace KsPlc.Controllers
                         LocationInfoModel la2 = LocationInfoMapper.FindByLocationcode("FH-T2");
                         if (SationStatus.Equals("01"))
                         {//代表此站点有货
-                          
+
                             if (la2 == null) return;
-                            if (la2.status != "occupied"&&trayNumber!="********")
+                            if (la2.status != "occupied" && trayNumber != "********")
                             {
                                 LocationInfoModel locationInfo = new LocationInfoModel();
                                 locationInfo.locationcode = "FH-T2";
@@ -385,7 +398,7 @@ namespace KsPlc.Controllers
                                 mes.messagetimestamp = DateTime.Now.ToString("yyyy:MM:dd HH:mm:ss");
                                 PLClogMapper.InsertMessageLog(mes);
                             }
-                           
+
                         }
                         else if (SationStatus.Equals("10"))
                         //代表此站点没货，没货就去清掉这里，不记录

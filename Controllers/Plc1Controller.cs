@@ -244,8 +244,21 @@ namespace KsPlc.Controllers
                     {
                         try
                         {
+                            // 拆分任务类型（支持中文逗号、英文逗号，并去除空格）
+                            var separators = new[] { '，', ',' };
+                            var taskTypes = la.lanenumber
+                                              .Split(separators, StringSplitOptions.RemoveEmptyEntries)
+                                              .Select(t => t.Trim())
+                                              .ToList();
+
+                            // 如果 la.lanenumber 为空或拆分后为空，需根据业务决定是否直接清除（但通常应有值）
+                            if (!taskTypes.Any())
+                            {
+                                System.Diagnostics.Trace.WriteLine($"点位 AGV-OUT-01 的 lanenumber 为空，无法检查任务，不清除点位");
+                                return;  // 退出 CheckStationStatus 方法，或只退出当前站点的处理
+                            }
                             // 原子操作：如果没有进行中的任务，则清除点位（状态设为 available，容器号清空）
-                            int affected = LocationInfoMapper.ClearIfNoTasks("AGV-OUT-01", la.lanenumber);
+                            int affected = LocationInfoMapper.ClearIfNoTasks("AGV-OUT-01", taskTypes);
                             if (affected > 0)
                             {
                                 // 清除成功，执行解绑

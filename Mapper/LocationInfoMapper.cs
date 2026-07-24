@@ -54,23 +54,39 @@ namespace KsPlc.Mapper
             }
         }
         /// <summary>
-        /// 使用 NOT EXISTS 条件更新点位状态（无任务时才能清除），taskType 模糊匹配
+        /// 使用 NOT EXISTS 条件更新点位状态（无任务时才能清除），支持多个任务类型的精确匹配
         /// </summary>
-        public static int ClearIfNoTasks(string locationcode, string taskType)
+        /// <param name="locationcode">点位编码</param>
+        /// <param name="taskTypes">任务类型列表（至少一个）</param>
+        /// <returns>影响行数（1表示清除成功，0表示未清除）</returns>
+        public static int ClearIfNoTasks(string locationcode, IEnumerable<string> taskTypes)
         {
-            string sql = @"
+            if (taskTypes == null || !taskTypes.Any())
+                throw new ArgumentException("至少提供一个任务类型", nameof(taskTypes));
+
+            var typeList = taskTypes.ToList();
+            // 构建参数化 IN 子句
+            string placeholders = string.Join(",", typeList.Select((_, i) => $"@type{i}"));
+            string sql = $@"
 UPDATE wcs_locationinfo
 SET status = 'available', containercode = NULL
 WHERE locationcode = @locationcode
   AND NOT EXISTS (
       SELECT 1 FROM wcs_taskinfo
-      WHERE TaskType LIKE CONCAT('%', @taskType, '%')
+      WHERE TaskType IN ({placeholders})
         AND TaskStatus IN ('assigned', 'executing')
   )";
+
             using (var connection = new MySqlConnection(SqlConn))
             {
                 connection.Open();
-                return connection.Execute(sql, new { locationcode, taskType });
+                var parameters = new DynamicParameters();
+                parameters.Add("locationcode", locationcode);
+                for (int i = 0; i < typeList.Count; i++)
+                {
+                    parameters.Add($"type{i}", typeList[i]);
+                }
+                return connection.Execute(sql, parameters);
             }
         }
     }
